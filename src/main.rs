@@ -1,16 +1,15 @@
+mod db;
 mod error;
 mod lnd;
 mod pay;
-mod db;
 mod users;
 
-use axum::{routing::get, Router, Extension};
+use axum::{routing::get, Extension, Router};
 use pay::{payment_request_callback, payment_request_response};
 use sqlx::sqlite::SqlitePoolOptions;
 
 #[tokio::main]
 async fn main() {
-
     let database = match SqlitePoolOptions::new().connect("benlnurl.db").await {
         Ok(db) => db,
         Err(e) => {
@@ -33,5 +32,3 @@ async fn main() {
         .await
         .unwrap();
 }
-
-

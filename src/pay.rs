@@ -1,18 +1,17 @@
-use std::{sync::Arc, fs};
+use crate::db::BenlnurlDatabase;
 use crate::error::build_error;
-use crate::{error::BenlnurlError, lnd::LndClient};
 use crate::users::load_users;
+use crate::{error::BenlnurlError, lnd::LndClient};
 use axum::{
     extract::Query,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
-    Extension
+    Extension, Json,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use crate::db::BenlnurlDatabase;
 use sqlx::FromRow;
+use std::collections::HashMap;
+use std::{fs, sync::Arc};
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
@@ -33,18 +32,18 @@ pub struct BenlnurlPayCallback {
 #[derive(Serialize, Deserialize)]
 pub struct BenlnurlPayResponse {
     pr: String,
-    routes: Vec<String>
+    routes: Vec<String>,
 }
 
 pub async fn payment_request_callback(Query(params): Query<HashMap<String, String>>) -> Response {
     // get connection info from request
     let username = match params.get("username") {
         Some(username) => username,
-        None => return build_error("Query param needs to be username=") 
+        None => return build_error("Query param needs to be username="),
     };
 
     // look for user in db.
-    
+
     (
         StatusCode::OK,
         Json(BenlnurlPayCallback {
@@ -58,31 +57,46 @@ pub async fn payment_request_callback(Query(params): Query<HashMap<String, Strin
         .into_response()
 }
 
-pub async fn payment_request_response(_state: Extension<Arc<BenlnurlDatabase>>, Query(params): Query<HashMap<String, String>>) -> Response {
-
+pub async fn payment_request_response(
+    _state: Extension<Arc<BenlnurlDatabase>>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Response {
     let users = match load_users() {
         Ok(u) => u,
-        Err(_) => return build_error("No file for users on server") 
+        Err(_) => return build_error("No file for users on server"),
     };
 
     let username = match params.get("username") {
         Some(name) => name,
-        None => return build_error("Query in request must include amount=")
+        None => return build_error("Query in request must include amount="),
     };
 
     let _amount = match params.get("amount") {
         Some(amt) => amt,
-        None => return build_error("Query in request must include amount=")
+        None => return build_error("Query in request must include amount="),
     };
 
-    let user = users.iter().find(|user| username.to_owned() == user.username).unwrap();
+    let user = users
+        .iter()
+        .find(|user| username.to_owned() == user.username)
+        .unwrap();
 
-    let mut client = LndClient::new(user.address.clone(), user.cert.clone(), user.macaroon.clone()).await.unwrap();
+    let mut client = LndClient::new(
+        user.address.clone(),
+        user.cert.clone(),
+        user.macaroon.clone(),
+    )
+    .await
+    .unwrap();
 
     let payment_request = client.create_invoice().await;
-    
-   (StatusCode::OK, Json(BenlnurlPayResponse {
-        pr: payment_request,
-        routes: Vec::new()
-    })).into_response() 
+
+    (
+        StatusCode::OK,
+        Json(BenlnurlPayResponse {
+            pr: payment_request,
+            routes: Vec::new(),
+        }),
+    )
+        .into_response()
 }

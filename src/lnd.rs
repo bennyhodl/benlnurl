@@ -8,12 +8,7 @@ impl LndClient {
         cert_hex: String,
         macaroon_hex: String,
     ) -> anyhow::Result<LndClient> {
-        let client = in_mem_connect(
-            address,
-            cert_hex,
-            macaroon_hex,
-        )
-        .await?;
+        let client = in_mem_connect(address, cert_hex, macaroon_hex).await?;
 
         Ok(LndClient(client))
     }

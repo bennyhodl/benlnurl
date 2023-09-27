@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
@@ -10,7 +10,7 @@ pub struct User {
     maxSpendable: u64,
     pub address: String,
     pub macaroon: String,
-    pub cert: String
+    pub cert: String,
 }
 
 pub fn load_users() -> anyhow::Result<Vec<User>> {

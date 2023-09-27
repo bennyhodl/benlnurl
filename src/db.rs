@@ -1,13 +1,17 @@
 use axum::Extension;
-use sqlx::{Error, pool::Pool, sqlite::{Sqlite, SqlitePoolOptions}};
+use sqlx::{
+    pool::Pool,
+    sqlite::{Sqlite, SqlitePoolOptions},
+    Error,
+};
 
 use crate::pay::BenlnurlPayCallback;
 
 pub struct BenlnurlDatabase {
-    pub database: Pool<Sqlite>
+    pub database: Pool<Sqlite>,
 }
 
-pub async fn connect_to_database() -> Result<Pool<Sqlite>, Error> { 
+pub async fn connect_to_database() -> Result<Pool<Sqlite>, Error> {
     let db = SqlitePoolOptions::new().connect("benlnurl.db").await?;
 
     let crete_table_query = "
@@ -25,4 +29,3 @@ pub async fn connect_to_database() -> Result<Pool<Sqlite>, Error> {
 
     Ok(db)
 }
-
