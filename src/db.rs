@@ -1,13 +1,14 @@
-use rusqlite::Connection;
+use axum::Extension;
+use sqlx::{Error, pool::Pool, sqlite::{Sqlite, SqlitePoolOptions}};
 
-pub fn connect_to_database() -> Connection {
-    let db = match Connection::open("benlnurl.db") {
-        Ok(database) => database,
-        Err(e) => {
-            println!("Error opening the database: {}", e);
-            panic!();
-        }
-    };
+use crate::pay::BenlnurlPayCallback;
+
+pub struct BenlnurlDatabase {
+    pub database: Pool<Sqlite>
+}
+
+pub async fn connect_to_database() -> Result<Pool<Sqlite>, Error> { 
+    let db = SqlitePoolOptions::new().connect("benlnurl.db").await?;
 
     let crete_table_query = "
         create table if not exists benlnurl (
@@ -20,13 +21,13 @@ pub fn connect_to_database() -> Connection {
         )
     ";
 
-    match db.execute(crete_table_query, ()) {
-        Ok(..) => println!("Using benlnurl database"),
-        Err(e) => {
-            println!("Did not create table: {:?}", e);
-            panic!()
-        }
-    };
+    let _ = sqlx::query(crete_table_query).execute(&db).await?;
 
-    db
+    Ok(db)
 }
+
+    // let data = fs::read_to_string("./persons.json")
+    //     .expect("Unable to read file");
+    //
+    // let json: serde_json::Value = serde_json::from_str(&data)
+    //     .expect("JSON does not have correct format.");

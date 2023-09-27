@@ -4,14 +4,14 @@ pub struct LndClient(Client);
 
 impl LndClient {
     pub async fn new(
-        address: &str,
-        cert_hex: &str,
-        macaroon_hex: &str,
+        address: String,
+        cert_hex: String,
+        macaroon_hex: String,
     ) -> anyhow::Result<LndClient> {
         let client = in_mem_connect(
-            address.to_string(),
-            cert_hex.to_string(),
-            macaroon_hex.to_string(),
+            address,
+            cert_hex,
+            macaroon_hex,
         )
         .await?;
 
