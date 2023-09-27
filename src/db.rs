@@ -26,8 +26,3 @@ pub async fn connect_to_database() -> Result<Pool<Sqlite>, Error> {
     Ok(db)
 }
 
-    // let data = fs::read_to_string("./persons.json")
-    //     .expect("Unable to read file");
-    //
-    // let json: serde_json::Value = serde_json::from_str(&data)
-    //     .expect("JSON does not have correct format.");

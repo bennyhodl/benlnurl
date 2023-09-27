@@ -1,4 +1,5 @@
 use std::{sync::Arc, fs};
+use crate::error::build_error;
 use crate::{error::BenlnurlError, lnd::LndClient};
 use crate::users::load_users;
 use axum::{
@@ -39,16 +40,7 @@ pub async fn payment_request_callback(Query(params): Query<HashMap<String, Strin
     // get connection info from request
     let username = match params.get("username") {
         Some(username) => username,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(BenlnurlError {
-                    status: "ERROR".to_string(),
-                    reason: "Query in request must be <url>?username=".to_string(),
-                }),
-            )
-                .into_response()
-        }
+        None => return build_error("Query param needs to be username=") 
     };
 
     // look for user in db.
@@ -70,41 +62,17 @@ pub async fn payment_request_response(_state: Extension<Arc<BenlnurlDatabase>>, 
 
     let users = match load_users() {
         Ok(u) => u,
-        Err(_) => return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(BenlnurlError {
-                status: "ERROR".to_string(),
-                reason: "No file for users on server".to_string()
-            })
-        ).into_response()
+        Err(_) => return build_error("No file for users on server") 
     };
 
     let username = match params.get("username") {
         Some(name) => name,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(BenlnurlError {
-                    status: "ERROR".to_string(),
-                    reason: "Query in request must include amount=".to_string(),
-                }),
-            )
-                .into_response()
-        }
+        None => return build_error("Query in request must include amount=")
     };
 
     let _amount = match params.get("amount") {
         Some(amt) => amt,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(BenlnurlError {
-                    status: "ERROR".to_string(),
-                    reason: "Query in request must include amount=".to_string(),
-                }),
-            )
-                .into_response()
-        }
+        None => return build_error("Query in request must include amount=")
     };
 
     let user = users.iter().find(|user| username.to_owned() == user.username).unwrap();
