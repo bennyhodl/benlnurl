@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
     Extension, Json,
 };
+use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::collections::HashMap;
@@ -57,29 +58,35 @@ pub async fn payment_request_callback(Query(params): Query<HashMap<String, Strin
         .into_response()
 }
 
-pub async fn payment_request_response(
-    _state: Extension<Arc<BenlnurlDatabase>>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
+pub async fn payment_request_response(Query(params): Query<HashMap<String, String>>) -> Response {
     let users = match load_users() {
         Ok(u) => u,
-        Err(_) => return build_error("No file for users on server"),
+        Err(e) => {
+            println!("Error: {}", e);
+            return build_error("No file for users on server");
+        }
     };
+
+    info!("Loaded users: {:?}", users);
 
     let username = match params.get("username") {
         Some(name) => name,
-        None => return build_error("Query in request must include amount="),
+        None => return build_error("Query in request must include username="),
     };
 
-    let _amount = match params.get("amount") {
+    let amount = match params.get("amount") {
         Some(amt) => amt,
         None => return build_error("Query in request must include amount="),
     };
 
-    let user = users
-        .iter()
-        .find(|user| username.to_owned() == user.username)
-        .unwrap();
+    info!("Using username: {} for amount {}", username, amount);
+
+    let user = match users.get(username) {
+        Some(u) => u,
+        None => return build_error("No user on the server."),
+    };
+
+    println!("Got user: {:?}", user);
 
     let mut client = LndClient::new(
         user.address.clone(),
