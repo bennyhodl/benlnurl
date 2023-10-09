@@ -1,4 +1,4 @@
-use tonic_lnd::{in_mem_connect, Client, ConnectError};
+use tonic_lnd::{in_mem_connect, Client};
 
 pub struct LndClient(Client);
 
@@ -13,14 +13,15 @@ impl LndClient {
         Ok(LndClient(client))
     }
 
-    pub async fn create_invoice(&mut self) -> String {
+    pub async fn create_invoice(&mut self, memo: String) -> String {
         let invoice_request = tonic_lnd::lnrpc::InvoiceRequest {
-            memo: "ben".to_string(),
+            memo: format!("Pay {} becuase they use benlnurl", memo),
             private: false,
             value_msat: 100000,
             is_keysend: false,
             is_amp: false,
         };
+
         let response = self
             .0
             .lightning()

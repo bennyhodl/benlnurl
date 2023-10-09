@@ -1,18 +1,15 @@
-use crate::db::BenlnurlDatabase;
 use crate::error::build_error;
+use crate::lnd::LndClient;
 use crate::users::load_users;
-use crate::{error::BenlnurlError, lnd::LndClient};
 use axum::{
     extract::Query,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Extension, Json,
+    Json,
 };
-use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use std::collections::HashMap;
-use std::{fs, sync::Arc};
+use std::{collections::HashMap, fmt::format};
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
@@ -20,8 +17,8 @@ pub struct PaymentRequest {
     paymentRequest: String,
 }
 
-#[allow(non_snake_case)]
 #[derive(Debug, Serialize, FromRow, Deserialize)]
+#[allow(non_snake_case)]
 pub struct BenlnurlPayCallback {
     callback: String, // The URL from LN SERVICE which will accept the pay request parameters
     maxSendable: u64, // Max millisatoshi amount LN SERVICE is willing to receive
@@ -38,12 +35,11 @@ pub struct BenlnurlPayResponse {
 
 pub async fn payment_request_callback(Query(params): Query<HashMap<String, String>>) -> Response {
     // get connection info from request
+
     let username = match params.get("username") {
         Some(username) => username,
         None => return build_error("Query param needs to be username="),
     };
-
-    // look for user in db.
 
     (
         StatusCode::OK,
@@ -51,7 +47,10 @@ pub async fn payment_request_callback(Query(params): Query<HashMap<String, Strin
             callback: format!("http://localhost:3000/payRequest?username={}", username),
             maxSendable: 50000,
             minSendable: 10,
-            metadata: "[[\"text/plain\", \"Pay Ben!\"]]".to_string(),
+            metadata: format!(
+                "[[\"text/plain\", \"Pay {} because they use benlnurl\"]]",
+                username
+            ),
             tag: "paymentRequest".to_string(),
         }),
     )
@@ -67,26 +66,20 @@ pub async fn payment_request_response(Query(params): Query<HashMap<String, Strin
         }
     };
 
-    info!("Loaded users: {:?}", users);
-
     let username = match params.get("username") {
         Some(name) => name,
         None => return build_error("Query in request must include username="),
     };
 
-    let amount = match params.get("amount") {
+    let _amount = match params.get("amount") {
         Some(amt) => amt,
         None => return build_error("Query in request must include amount="),
     };
-
-    info!("Using username: {} for amount {}", username, amount);
 
     let user = match users.get(username) {
         Some(u) => u,
         None => return build_error("No user on the server."),
     };
-
-    println!("Got user: {:?}", user);
 
     let mut client = LndClient::new(
         user.address.clone(),
@@ -96,7 +89,7 @@ pub async fn payment_request_response(Query(params): Query<HashMap<String, Strin
     .await
     .unwrap();
 
-    let payment_request = client.create_invoice().await;
+    let payment_request = client.create_invoice(username.to_string()).await;
 
     (
         StatusCode::OK,
