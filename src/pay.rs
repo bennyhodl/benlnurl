@@ -7,55 +7,8 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use std::{collections::HashMap, fmt::format};
-
-#[allow(non_snake_case)]
-#[derive(Serialize, Deserialize)]
-pub struct PaymentRequest {
-    paymentRequest: String,
-}
-
-#[derive(Debug, Serialize, FromRow, Deserialize)]
-#[allow(non_snake_case)]
-pub struct BenlnurlPayCallback {
-    callback: String, // The URL from LN SERVICE which will accept the pay request parameters
-    maxSendable: u64, // Max millisatoshi amount LN SERVICE is willing to receive
-    minSendable: u64, // Min millisatoshi amount LN SERVICE is willing to receive, can not be less than 1 or more than `maxSendable`
-    metadata: String, // Metadata json which must be presented as raw string here, this is required to pass signature verification at a later step
-    tag: String,      // Type of LNURL
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BenlnurlPayResponse {
-    pr: String,
-    routes: Vec<String>,
-}
-
-pub async fn payment_request_callback(Query(params): Query<HashMap<String, String>>) -> Response {
-    // get connection info from request
-
-    let username = match params.get("username") {
-        Some(username) => username,
-        None => return build_error("Query param needs to be username="),
-    };
-
-    (
-        StatusCode::OK,
-        Json(BenlnurlPayCallback {
-            callback: format!("http://localhost:3000/payRequest?username={}", username),
-            maxSendable: 50000,
-            minSendable: 10,
-            metadata: format!(
-                "[[\"text/plain\", \"Pay {} because they use benlnurl\"]]",
-                username
-            ),
-            tag: "paymentRequest".to_string(),
-        }),
-    )
-        .into_response()
-}
+use lnurl::pay::LnURLPayInvoice;
+use std::collections::HashMap;
 
 pub async fn payment_request_response(Query(params): Query<HashMap<String, String>>) -> Response {
     let users = match load_users() {
@@ -91,12 +44,7 @@ pub async fn payment_request_response(Query(params): Query<HashMap<String, Strin
 
     let payment_request = client.create_invoice(username.to_string()).await;
 
-    (
-        StatusCode::OK,
-        Json(BenlnurlPayResponse {
-            pr: payment_request,
-            routes: Vec::new(),
-        }),
-    )
-        .into_response()
+    let response = LnURLPayInvoice::new(payment_request);
+
+    (StatusCode::OK, Json(response)).into_response()
 }
